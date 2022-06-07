@@ -3,9 +3,11 @@
 # Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/python
 
+# マスターブランチへの変更をトリガーとして起動します
 trigger:
 - master
 
+# CIに必要なVMを定義します
 pool:
   vmImage: ubuntu-latest
 strategy:
@@ -19,18 +21,35 @@ strategy:
     Python37:
       python.version: '3.7'
 
+# パイプラインの処理を記載します
 steps:
+# 利用するPythonのバージョンを定義します
 - task: UsePythonVersion@0
   inputs:
     versionSpec: '$(python.version)'
   displayName: 'Use Python $(python.version)'
 
+# 必要なライブラリをインストールします
 - script: |
     python -m pip install --upgrade pip
     pip install -r requirements.txt
   displayName: 'Install dependencies'
 
+# テストを実行します
 - script: |
     pip install pytest pytest-azurepipelines
     pytest
   displayName: 'pytest'
+  
+  # ソースコードをアーカイブし、公開します
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.SourcesDirectory)'
+    includeRootFolder: false
+    archiveType: 'zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/Application$(Build.BuildId).zip'
+    replaceExistingArchive: true
+    verbose: # (no value); this input is optional
+- publish: $(Build.ArtifactStagingDirectory)/Application$(Build.BuildId).zip
+  displayName: 'Upload package'
+  artifact: drop
